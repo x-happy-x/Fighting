@@ -1,0 +1,199 @@
+<title>Naruto Vector Rig</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700&display=swap">
+<style>
+:root{
+  --bg:#f3efe6; --panel:#fffdf8; --ink:#231f1c; --muted:#6d655c; --line:#ddd4c6;
+  --accent:#e8892b; --stage-a:#fff6dd; --stage-b:#f6e3b8; --ground:#d9c49a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){color-scheme:dark;
+    --bg:#1a1714; --panel:#241f1b; --ink:#f3ebe0; --muted:#a89d8f; --line:#3a332c;
+    --accent:#f2a24a; --stage-a:#3a2f22; --stage-b:#2a221a; --ground:#4d3f2c;}
+}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#1a1714; --panel:#241f1b; --ink:#f3ebe0; --muted:#a89d8f; --line:#3a332c;
+  --accent:#f2a24a; --stage-a:#3a2f22; --stage-b:#2a221a; --ground:#4d3f2c;}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 Nunito,system-ui,sans-serif;padding-inline:16px;padding-block:24px 40px}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:20px}
+h1{font:400 clamp(34px,6vw,54px)/1 Bangers,Impact,sans-serif;letter-spacing:.03em;margin:0}
+h1 span{color:var(--accent)}
+p.lead{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.main{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:720px){.main{grid-template-columns:1fr}}
+.stage{background:radial-gradient(circle at 50% 35%,var(--stage-a),var(--stage-b));border-radius:14px;border:1px solid var(--line);overflow:hidden}
+.stage svg{display:block;width:100%;height:auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px}
+.label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:700;border:2px solid var(--ink);background:transparent;color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1d140a}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.row{display:flex;align-items:center;gap:10px}
+.row input{flex:1}
+code{font-size:13px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 6px 8px;cursor:pointer;text-align:center}
+.cell svg{width:100%;height:auto;display:block}
+.cell b{font-size:13px}
+.cell small{display:block;color:var(--muted);font-size:11px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Naruto <span>Vector</span> Rig</h1>
+    <p class="lead">Жёлтый боец из <code>Characters/Naruto</code>, перерисованный в SVG. Каждая часть тела отдельная, анимации считаются из ключевых кадров, так что картинка чёткая на любом размере.</p>
+  </header>
+  <section class="main">
+    <div class="stage" id="stage"></div>
+    <div class="panel">
+      <div><div class="label">Действие</div><div class="btns" id="btns"></div></div>
+      <div><div class="label">Скорость</div>
+        <div class="row"><input id="speed" type="range" min="0.25" max="2" step="0.05" value="1"><output id="speedOut">1.00×</output></div></div>
+      <div class="row"><button id="flip" aria-pressed="false">Отразить</button><button id="pause" aria-pressed="false">Пауза</button></div>
+      <div class="label">Папка в игре: <code id="folder">NoAction</code></div>
+    </div>
+  </section>
+  <section>
+    <div class="label" style="margin-bottom:8px">Все анимации</div>
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+
+<script>
+const C={ink:'#221d1a',skin:'#fbe5cb',hair:'#f8c73a',hairShade:'#eaa91f',shirt:'#f2a04a',shorts:'#7e7fa3',white:'#fff',mouth:'#d9727e'};
+const NS='http://www.w3.org/2000/svg';
+// Hair: spiky star around the head
+function hairPath(){
+  const cx=125,cy=102,pts=[];const spikes=[[-170,62],[-150,40],[-128,70],[-105,48],[-80,74],[-55,50],[-30,70],[-8,48],[15,58],[40,40],[-190,40],[165,44]];
+  const n=15;
+  for(let i=0;i<n;i++){
+    const a=(-205+i*(250/(n-1)))*Math.PI/180;
+    const R=[70,82,76,88,80,92,84,90,80,86,76,72,64,56,50][i];
+    const r=46;
+    pts.push([cx+Math.cos(a)*R,cy+Math.sin(a)*R*0.95]);
+    const b=a+(250/(n-1))*Math.PI/360;
+    if(i<n-1)pts.push([cx+Math.cos(b)*r,cy+Math.sin(b)*r]);
+  }
+  pts.push([cx+30,cy+40],[cx-30,cy+42],[cx-52,cy+30]);
+  return 'M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L')+'Z';
+}
+const HAIR=hairPath();
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent&&parent.appendChild(e);return e;}
+const S={stroke:C.ink,'stroke-width':4,'stroke-linejoin':'round','stroke-linecap':'round'};
+
+function makeFighter(host,withGround){
+  const svg=el('svg',{viewBox:'-40 -50 330 345',role:'img','aria-label':'Наруто, векторный спрайт'});
+  host.appendChild(svg);
+  if(withGround){el('ellipse',{cx:125,cy:284,rx:130,ry:9,fill:'var(--ground)'},svg);}
+  const shadow=el('ellipse',{cx:125,cy:283,rx:48,ry:6,fill:'#000',opacity:.18},svg);
+  const flipG=el('g',{},svg);
+  const root=el('g',{},flipG);
+  const limb=(parent,w)=>{const g=el('g',{},parent);return{g,line:el('path',{...S,fill:'none','stroke-width':w},g)}};
+  // back leg + back arm
+  const legB=limb(root,13),legBin=el('path',{fill:'none',stroke:C.white,'stroke-width':6,'stroke-linecap':'round'},legB.g),footB=el('ellipse',{...S,'stroke-width':3.5,fill:C.skin,rx:12,ry:6},legB.g);
+  const upper=el('g',{},root);
+  const armB=limb(upper,12),armBin=el('path',{fill:'none',stroke:C.white,'stroke-width':5,'stroke-linecap':'round'},armB.g),fistB=el('circle',{...S,'stroke-width':3.5,fill:C.white,r:8},armB.g);
+  // shorts and shirt
+  el('path',{...S,fill:C.shorts,d:'M97 206 L153 206 L157 236 L130 238 L125 228 L120 238 L93 236 Z'},upper);
+  el('path',{...S,fill:C.shirt,d:'M100 164 Q125 156 150 164 L162 182 L152 188 L154 212 Q125 218 96 212 L98 188 L88 182 Z'},upper);
+  el('path',{fill:'none',stroke:C.ink,'stroke-width':3.2,'stroke-linecap':'round',d:'M127 192 a3 3 0 1 1 -3 -4 a7 7 0 1 1 -6 9 a11 11 0 1 1 12 10'},upper);
+  // front leg
+  const legF=limb(root,13),legFin=el('path',{fill:'none',stroke:C.white,'stroke-width':6,'stroke-linecap':'round'},legF.g),footF=el('ellipse',{...S,'stroke-width':3.5,fill:C.skin,rx:12,ry:6},legF.g);
+  root.insertBefore(legF.g,upper); root.appendChild(upper);
+  // head
+  const head=el('g',{},upper);
+  el('path',{...S,fill:C.hair,d:HAIR},head);
+  el('ellipse',{...S,fill:C.skin,cx:128,cy:128,rx:42,ry:36},head);
+  el('ellipse',{...S,fill:C.skin,cx:88,cy:130,rx:9,ry:11},head);
+  el('path',{...S,fill:C.hair,'stroke-width':3.5,d:'M86 108 Q100 90 128 92 Q160 90 170 116 L158 108 L152 122 L140 104 L132 120 L120 102 L110 118 L104 104 Z'},head);
+  const face=el('g',{},head);
+  const faces={};
+  const mk=(name,build)=>{const g=el('g',{},face);build(g);faces[name]=g;};
+  const whisk=g=>{for(const [x,y] of [[98,140],[146,146]])for(let i=0;i<3;i++)el('path',{stroke:C.ink,'stroke-width':2.5,'stroke-linecap':'round',d:`M${x} ${y+i*5} l12 -2`},g);};
+  const eyes=(g,sq)=>{
+    el('path',{fill:'none',stroke:C.ink,'stroke-width':4,'stroke-linecap':'round',d:'M114 112 L132 122 M166 114 L150 123'},g);
+    if(sq){el('path',{fill:'none',stroke:C.ink,'stroke-width':3.5,'stroke-linecap':'round',d:'M119 127 l12 0 M147 127 l12 0'},g);}
+    else{for(const x of [126,154]){el('ellipse',{fill:C.white,stroke:C.ink,'stroke-width':2.5,cx:x,cy:128,rx:6,ry:7},g);el('circle',{fill:C.ink,cx:x+1.5,cy:129,r:3.4},g);}}
+  };
+  mk('normal',g=>{eyes(g);whisk(g);el('path',{...S,'stroke-width':3.5,fill:C.mouth,d:'M130 142 Q142 140 156 138 Q152 156 138 156 Q130 152 130 142 Z'},g);});
+  mk('shout',g=>{eyes(g);whisk(g);el('path',{...S,'stroke-width':3.5,fill:C.mouth,d:'M128 140 Q144 136 158 136 Q156 162 140 162 Q128 158 128 140 Z'},g);el('path',{fill:C.white,d:'M131 142 L156 139 L155 144 L132 146 Z'},g);});
+  mk('squint',g=>{eyes(g,true);whisk(g);el('path',{fill:'none',stroke:C.ink,'stroke-width':3.5,'stroke-linecap':'round',d:'M134 148 l18 -2'},g);});
+  mk('ko',g=>{el('path',{fill:'none',stroke:C.ink,'stroke-width':3.5,'stroke-linecap':'round',d:'M120 122 l12 12 M132 122 l-12 12 M148 122 l12 12 M160 122 l-12 12'},g);whisk(g);el('path',{fill:'none',stroke:C.ink,'stroke-width':3.5,'stroke-linecap':'round',d:'M132 150 q10 -6 20 0'},g);});
+  // front arm on top
+  const armF=limb(upper,12),armFin=el('path',{fill:'none',stroke:C.white,'stroke-width':5,'stroke-linecap':'round'},armF.g),fistF=el('circle',{...S,'stroke-width':3.5,fill:C.white,r:9},armF.g);
+  // impact fx
+  const fx=el('path',{fill:'#fff3a6',stroke:C.ink,'stroke-width':3,'stroke-linejoin':'round',d:star(0,0,22,10,8)},root);
+  function setLimb(L,inner,end,x,y,ang,len,isLeg,foot){
+    const a=ang*Math.PI/180,ex=x-Math.sin(a)*len,ey=y+Math.cos(a)*len;
+    const d=`M${x} ${y} L${ex.toFixed(1)} ${ey.toFixed(1)}`;
+    L.line.setAttribute('d',d);inner.setAttribute('d',d);
+    if(isLeg){end.setAttribute('cx',ex+5);end.setAttribute('cy',ey+2);end.setAttribute('transform',`rotate(${-ang} ${ex} ${ey})`);}
+    else{end.setAttribute('cx',ex);end.setAttribute('cy',ey);}
+  }
+  return{svg,flipG,apply(p,flip){
+    flipG.setAttribute('transform',flip?'translate(250 0) scale(-1 1)':'');
+    root.setAttribute('transform',`translate(${p.x} ${p.y}) rotate(${p.rot} 125 282)`);
+    upper.setAttribute('transform',`translate(0 ${p.bob}) rotate(${p.lean} 125 222)`);
+    head.setAttribute('transform',`rotate(${p.head} 128 160)`);
+    setLimb(legB,legBin,footB,116,228,p.lB,48,true);
+    setLimb(legF,legFin,footF,134,228,p.lF,48,true);
+    setLimb(armB,armBin,fistB,100,176,p.aB,34);
+    setLimb(armF,armFin,fistF,150,176,p.aF,p.lenF);
+    for(const k in faces)faces[k].style.display=k===p.face?'':'none';
+    fx.setAttribute('transform',`translate(${p.fxX} ${p.fxY}) scale(${p.fx})`);fx.setAttribute('opacity',p.fx>0.05?1:0);
+    shadow.setAttribute('rx',48*(1-Math.min(.5,-p.y/200)));shadow.setAttribute('cx',125+p.x*(flip?-1:1));
+  }};
+}
+function star(cx,cy,R,r,n){let d='';for(let i=0;i<n*2;i++){const a=i*Math.PI/n,rr=i%2?r:R;d+=(i?'L':'M')+(cx+Math.cos(a)*rr).toFixed(1)+' '+(cy+Math.sin(a)*rr).toFixed(1);}return d+'Z';}
+
+const BASE={x:0,y:0,rot:0,bob:0,lean:0,head:0,aB:12,aF:-14,lenF:34,lB:6,lF:-6,face:'normal',fx:0,fxX:210,fxY:180};
+const K=(t,o)=>({t,...o});
+// [name, folder, description, duration ms, loop, keyframes]
+const ACTIONS=[
+ ['Стойка','NoAction',1200,[K(0,{}),K(.5,{bob:3,aB:18,aF:-20,head:-2}),K(1,{})]],
+ ['Ходьба','Move',800,[K(0,{lB:24,lF:-24,aB:-20,aF:22,bob:0}),K(.25,{lB:0,lF:0,bob:-4,aB:0,aF:0}),K(.5,{lB:-24,lF:24,aB:24,aF:-24,bob:0}),K(.75,{lB:0,lF:0,bob:-4,aB:0,aF:0}),K(1,{lB:24,lF:-24,aB:-20,aF:22})]],
+ ['Прыжок','Jump',1100,[K(0,{}),K(.15,{bob:10,lB:30,lF:-30,aB:40,aF:30,face:'shout'}),K(.45,{y:-90,lB:-40,lF:-60,aB:150,aF:-160,face:'shout'}),K(.7,{y:-40,lB:10,lF:-20,aB:90,aF:-110,face:'shout'}),K(.85,{bob:8,lB:26,lF:-26,aB:30,aF:-20}),K(1,{})]],
+ ['Удар рукой','Punch',700,[K(0,{}),K(.25,{lean:-6,aF:-40,lenF:24,aB:30,lB:14,lF:-18,face:'shout'}),K(.45,{lean:10,x:8,aF:-92,lenF:62,aB:-30,lB:18,lF:-26,face:'shout',fx:1}),K(.6,{lean:8,x:8,aF:-92,lenF:60,aB:-30,lB:18,lF:-26,face:'shout',fx:.6}),K(1,{})]],
+ ['Удар ногой','Kick',900,[K(0,{}),K(.25,{lean:-8,lF:-50,lB:8,aB:40,aF:-40,face:'shout'}),K(.45,{lean:-18,lF:-100,lB:-6,aB:70,aF:-70,face:'shout',fx:1,fxX:218,fxY:218}),K(.62,{lean:-16,lF:-98,lB:-6,aB:70,aF:-70,face:'shout',fx:.5,fxX:218,fxY:218}),K(1,{})]],
+ ['Блок','Block',900,[K(0,{}),K(.25,{aF:-160,lenF:30,aB:-150,bob:6,lean:-4,lB:18,lF:-18,head:4,face:'squint'}),K(.75,{aF:-160,lenF:30,aB:-150,bob:6,lean:-4,lB:18,lF:-18,head:4,face:'squint'}),K(1,{})]],
+ ['Поражение','Dead',1800,[K(0,{}),K(.12,{lean:-14,aB:120,aF:-100,head:-8,face:'ko',x:-4}),K(.4,{rot:-88,x:95,y:10,aB:160,aF:-150,lB:30,lF:10,face:'ko'}),K(.45,{rot:-84,x:95,y:4,aB:150,aF:-140,lB:24,lF:14,face:'ko'}),K(.5,{rot:-88,x:95,y:10,aB:160,aF:-150,lB:30,lF:10,face:'ko'}),K(.85,{rot:-88,x:95,y:10,aB:160,aF:-150,lB:30,lF:10,face:'ko'}),K(1,{})]],
+];
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function sample(kf,t){
+  let i=0;while(i<kf.length-2&&t>kf[i+1].t)i++;
+  const a={...BASE,...kf[i]},b={...BASE,...kf[i+1]},u=ease(Math.min(1,Math.max(0,(t-a.t)/(b.t-a.t||1))));
+  const p={};for(const k in BASE)p[k]=typeof BASE[k]==='number'?a[k]+(b[k]-a[k])*u:(u<.5||k!=='face'?a[k]:b[k]);
+  if(a.face!==b.face)p.face=a.face==='normal'?b.face:a.face;
+  return p;
+}
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const state={act:0,speed:1,flip:false,paused:reduce,t:0};
+const main=makeFighter(document.getElementById('stage'),true);
+const minis=ACTIONS.map((a,i)=>{
+  const cell=document.createElement('div');cell.className='cell';cell.tabIndex=0;
+  const f=makeFighter(cell,true);
+  cell.insertAdjacentHTML('beforeend',`<b>${a[0]}</b><small>${a[1]}</small>`);
+  cell.onclick=()=>select(i);cell.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(i)}};
+  document.getElementById('grid').appendChild(cell);return f;
+});
+const btns=ACTIONS.map((a,i)=>{const b=document.createElement('button');b.textContent=a[0];b.onclick=()=>select(i);document.getElementById('btns').appendChild(b);return b;});
+function select(i){state.act=i;state.t=0;btns.forEach((b,j)=>b.setAttribute('aria-pressed',i===j));document.getElementById('folder').textContent=ACTIONS[i][1];}
+select(0);
+document.getElementById('speed').oninput=e=>{state.speed=+e.target.value;document.getElementById('speedOut').textContent=state.speed.toFixed(2)+'×';};
+document.getElementById('flip').onclick=e=>{state.flip=!state.flip;e.target.setAttribute('aria-pressed',state.flip);};
+const pb=document.getElementById('pause');pb.setAttribute('aria-pressed',state.paused);pb.onclick=()=>{state.paused=!state.paused;pb.setAttribute('aria-pressed',state.paused);};
+let last=performance.now(),clock=0;
+function frame(now){
+  const dt=(now-last)*state.speed;last=now;
+  if(!state.paused){state.t+=dt;clock+=dt;}
+  const A=ACTIONS[state.act];
+  main.apply(sample(A[3],(state.t%A[2])/A[2]),state.flip);
+  ACTIONS.forEach((a,i)=>minis[i].apply(sample(a[3],state.paused?(i===2||i===3||i===4?.45:.3):(clock%a[2])/a[2]),false));
+  requestAnimationFrame(frame);
+}
+// draw a meaningful still frame first
+ACTIONS.forEach((a,i)=>minis[i].apply(sample(a[3],.45),false));main.apply(sample(ACTIONS[0][3],0),false);
+requestAnimationFrame(frame);
+</script>
